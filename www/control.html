@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+
+<html>
+
+<head>
+  <meta charset="UTF-8">
+
+  <title>Cockpit</title>
+
+  <!-- Source Paho MQTT Client-->
+  <script src="js/mqttws31-min.js"></script>
+  <!-- Utility Javascript -->
+  <script src="js/utility.js"></script>
+
+  <script>
+  // MQTT client object
+  var control_client = null;
+  </script>
+
+</head>
+
+<body onload="control_client = connect(sensor_topic, qos)">
+
+  <h1>Cockpit</h1>
+
+  <span id="connectionstatus">Connection status</span>
+
+  <p/>
+  Speed alone X axis:
+  <input type="range" id="rangex" min="-10" max="10" step="1">
+  <br/>
+  Speed alone Z axis: 
+  <input type="range" id="rangez" min="-10" max="10" step="1">
+
+  <p/>
+  <span id="positionx">X position:</span>
+  <br/>
+  <span id="positionz">Z position:</span>
+
+
+  <script src="js/jquery-1.12.3.min.js"></script>
+
+  <script>
+
+    // Attach event handlers to x and z sliders
+
+    $("#rangex").on("change", function() 
+    {
+        var msg = JSON.stringify( {'x':this.value / 10.0, 'y':0, 'z':$('#rangez').prop('value') / 10.0} );
+        publish(control_client, msg, command_topic, qos);
+    });
+
+    $("#rangez").on("change", function() {
+        var msg = JSON.stringify( {'z':this.value / 10.0, 'y':0, 'x':$('#rangex').prop('value') / 10.0} );
+        publish(control_client, msg, command_topic, qos);
+    });
+
+    // called when a message arrives
+    function onMessageArrived(message)
+    {
+        console.log('Message Recieved: Topic: ', message.destinationName, 
+                    '. Payload: ', message.payloadString, 
+                    '. QoS: ', message.qos);
+
+        // Deserialize received object
+        var motion_update = JSON.parse(message.payloadString);
+
+        // Update spans with new position coordinates
+
+        var xSpan = document.getElementById("positionx");
+        xSpan.innerHTML = "X position: " + motion_update.x;
+
+        var zSpan = document.getElementById("positionz");
+        zSpan.innerHTML = "Z position: " + motion_update.z;
+
+    }
+
+  </script>
+    
+</body>
+
+</html>

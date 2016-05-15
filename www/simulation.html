@@ -1,0 +1,213 @@
+<!DOCTYPE html>
+
+<html>
+
+<head>
+  <meta charset="UTF-8">
+
+  <title>Simulation</title>
+
+  <!-- Source Paho MQTT Client-->
+  <script src="js/mqttws31-min.js"></script>
+  <!-- Utility Javascript -->
+  <script src="js/utility.js"></script>
+
+  <script>
+  // MQTT client object
+  var sim_client = null;
+  </script>
+
+</head>
+
+<body onload="sim_client = connect(command_topic, qos)">
+
+  <h1>Simulation</h1>
+
+  <span id="connectionstatus">Connection status</span>
+
+  <script src="js/jquery-1.12.3.min.js"></script>
+  <script src="js/three.min.js"></script>
+  <script src="js/Detector.js"></script>
+  <script src="js/libs/stats.min.js"></script> 
+  <script src="js/objects/ShadowMesh.js"></script>
+
+  <div id="animation"/>
+
+  <script>
+
+    // called when a message arrives
+    function onMessageArrived(message)
+    {
+      console.log('Message Recieved: Topic: ', message.destinationName, 
+                  '. Payload: ', message.payloadString, 
+                  '. QoS: ', message.qos);
+
+      // Deserialize message object and adjust speed alone axis
+      var motion_update = JSON.parse(message.payloadString);
+      setmotion(motion_update.x, motion_update.y, motion_update.z);
+    }
+
+    // Start ThreeJS visualisation block
+
+    // Check if we have WebGL
+    if(!Detector.webgl) 
+        Detector.addGetWebGLMessage();
+
+    var container, stats;
+
+    var camera, scene, renderer, sphere, sphere_shadow;
+    var normalVector = new THREE.Vector3( 0, 1, 0 );
+    var planeConstant = 0.05; // this value must be slightly higher than the groundMesh's y position of 0.0
+    var groundPlane = new THREE.Plane(normalVector, planeConstant);
+    var lightPosition4D = new THREE.Vector4();
+    
+    var sphere_pos_x = -10;
+    var sphere_pos_z = 50;
+    var sphere_pos_x_prev = sphere_pos_x;
+    var sphere_pos_z_prev = sphere_pos_z;
+    var dx = 0;
+    var dz = 0;
+    
+    init();
+    animate();
+
+    // Build 3D scene by adding plane, sphere and axis meshes plus light.
+    function init()
+    {
+      var light, object;
+
+      // Use element (in this case <div>) from above as container for visualization
+      container = document.getElementById('animation');
+
+      // Create and position the camera
+      camera = new THREE.PerspectiveCamera( 45, window.innerWidth / window.innerHeight, 1, 2000 );
+      camera.position.y = 150;
+      camera.position.x = 100;
+      camera.position.z = 220;
+
+      // Create new scene object
+      scene = new THREE.Scene();
+
+      // Add ambient and directional light
+      scene.add( new THREE.AmbientLight( 0x404040 ) );
+      light = new THREE.DirectionalLight( 0xffffff );
+      light.position.set(0, 1, 1);
+      scene.add(light);
+      lightPosition4D.x = light.position.x;
+      lightPosition4D.y = light.position.y;
+      lightPosition4D.z = light.position.z;
+      // amount of light-ray divergence. Ranging from:
+      // 0.001 = sunlight(min divergence) to 1.0 = pointlight(max divergence)
+      lightPosition4D.w = 0.001;
+
+      // Load textures for ball and plane and create corresponding materials
+      var map = new THREE.TextureLoader().load( 'textures/UV_Grid_Sm.jpg' );
+      map.wrapS = map.wrapT = THREE.RepeatWrapping;
+      map.anisotropy = 16;
+      var map2 = new THREE.TextureLoader().load( 'textures/grasslight-big-nm.jpg' );
+      map2.wrapS = map.wrapT = THREE.RepeatWrapping;
+      map2.anisotropy = 16;
+      var material = new THREE.MeshLambertMaterial( { map: map, side: THREE.DoubleSide } );
+      var material2 = new THREE.MeshLambertMaterial( { map: map2, side: THREE.DoubleSide } );
+
+      // Create sphere
+      sphere = new THREE.Mesh(new THREE.SphereGeometry(20, 20, 10), material);
+      sphere.position.set(sphere_pos_x, sphere.geometry.parameters.radius, sphere_pos_z);
+      scene.add(sphere);
+      // Create sphere shadow
+      sphere_shadow = new THREE.ShadowMesh(sphere);
+      scene.add(sphere_shadow);
+
+      // Create plane
+      object = new THREE.Mesh( new THREE.PlaneGeometry(200, 200, 4, 4), material2);
+      object.position.set(0, 0, 0);
+      object.rotation.x = 3.1415 / 2.0;
+      scene.add(object);
+
+      // Create axis helper (three ortogonal linies in the middle)
+      object = new THREE.AxisHelper(50);
+      object.position.set(0, 1, 0);
+      scene.add( object );
+
+      // Initialize ThreeJS renderer
+      renderer = new THREE.WebGLRenderer( { antialias: true } );
+      renderer.setPixelRatio( window.devicePixelRatio );
+      renderer.setSize( window.innerWidth, window.innerHeight );
+      container.appendChild(renderer.domElement);
+
+      // FPS visualization chart in the top left corner of the page
+      stats = new Stats();
+      container.appendChild(stats.dom);
+
+      // Add resize handler to adjust camera parameters
+      window.addEventListener( 'resize', onWindowResize, false );
+
+      // Point camera to the scene
+      camera.lookAt(scene.position);
+    }
+
+
+    // Adjust camera and renderer if our window is resized
+    function onWindowResize()
+    {
+      camera.aspect = window.innerWidth / window.innerHeight;
+      camera.updateProjectionMatrix();
+      renderer.setSize(window.innerWidth, window.innerHeight);
+    }
+
+    // Perform animation and rendering step
+    function animate()
+    {
+      requestAnimationFrame( animate );
+      render();
+      stats.update();
+    }
+
+
+    // Render frame
+    function render()
+    {
+      var timer = Date.now() * 0.0001;
+
+      sphere.rotation.x = timer * 5;
+      sphere.rotation.y = timer * 2.5;
+
+      sphere.position.x += dx;
+      sphere.position.z += dz;
+
+      if(Math.abs(sphere.position.x - sphere_pos_x_prev) > 10 * dx)
+      {
+        sphere_pos_x_prev = sphere.position.x;
+        var msg = JSON.stringify({"x":sphere_pos_x_prev, "z":sphere.position.z});
+        publish(sim_client, msg, sensor_topic, qos);
+      }
+
+      if(Math.abs(sphere.position.z - sphere_pos_z_prev) > 10 * dz)
+      {
+        sphere_pos_z_prev = sphere.position.z;
+        var msg = JSON.stringify({"x":sphere.position.x, "z":sphere_pos_z_prev});
+        publish(sim_client, msg, sensor_topic, qos);
+      }
+      
+      //camera.position.x = Math.cos( timer ) * 400;
+      //camera.position.z = Math.sin( timer ) * 400;
+      //camera.lookAt( scene.position );
+
+      sphere_shadow.update(groundPlane, lightPosition4D); 
+      renderer.render(scene, camera);
+    } 
+
+
+    // Adjust motion parameters. Y (vertical) axis is ignored for now.
+    function setmotion(increment_x, increment_y, increment_z)
+    {
+      dx = increment_x;
+      dz = increment_z;
+    }
+
+  </script>
+
+</div>    
+</body>
+
+</html>
