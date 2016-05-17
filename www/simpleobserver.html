@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+
+<html>
+
+<head>
+  <meta charset="UTF-8">
+
+  <title>Simulation</title>
+
+  <!-- Source Paho MQTT Client-->
+  <script src="js/mqttws31-min.js"></script>
+  <!-- Utility Javascript -->
+  <script src="js/utility.js"></script>
+
+  <script>
+  // MQTT client global object
+  var client = null;
+  </script>
+
+</head>
+
+<body onload="client = connect(command_topic, qos)">
+
+  <h1>Simple topic observer</h1>
+
+  <span id="connectionstatus">Connection status</span>
+  <p/>
+  Received notification: 
+  <span id="message">...</span>
+
+  <script>
+
+    // called when a message arrives
+    function onMessageArrived(message)
+    {
+        var msgSpan = document.getElementById("message");
+        // Deserialize message object and adjust speed alone axis
+        var motion_update = JSON.parse(message.payloadString);
+        msgSpan.innerHTML = message.payloadString;
+    }
+
+  </script>
+
+</div>    
+</body>
+
+</html>
