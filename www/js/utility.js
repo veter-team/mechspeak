@@ -1,7 +1,11 @@
 // MQTT connection parameters
-command_topic = "/rtmsg/d25638bb-17c2-46ac-b26e-ce1f67268098/commands";
-sensor_topic = "/rtmsg/d25638bb-17c2-46ac-b26e-ce1f67268098/sensors";
-qos = 0;
+var hostname = 'test.mosquitto.org'; // Could be changed to localhost if 
+var port = 8080;
+//var hostname = window.location.hostname;
+//var port = 9001;
+var command_topic = "/rtmsg/d25638bb-17c2-46ac-b26e-ce1f67268088/commands";
+var sensor_topic = "/rtmsg/d25638bb-17c2-46ac-b26e-ce1f67268088/sensors";
+var qos = 0;
 
 
 function generateUUID()
@@ -33,8 +37,8 @@ function onConnect(context)
 {
     var ctx = context.invocationContext;
     // Once a connection has been made, make a subscription and send a message.
-    console.log("Client Connected. Context:");
-    console.log(context);
+    console.info("Client Connected. Context:");
+    console.info(context);
     var statusSpan = document.getElementById("connectionstatus");
     statusSpan.innerHTML = "Connected to: " + ctx.host
 	                   + ':' + ctx.port
@@ -42,6 +46,7 @@ function onConnect(context)
 
     // Subscribe to notifications
     subscribe(ctx.client, ctx.topic, ctx.qos);
+    subscribe(ctx.client, sensor_topic + "/camera1", ctx.qos);
 }
 
 
@@ -50,7 +55,7 @@ function onConnectionLost(responseObject)
 {
     if (responseObject.errorCode !== 0)
     {
-	console.log("Connection Lost: " + responseObject.errorMessage);
+	console.info("Connection Lost: " + responseObject.errorMessage);
 	var statusSpan = document.getElementById("connectionstatus");
 	statusSpan.innerHTML = "Connection lost";
     }
@@ -59,10 +64,9 @@ function onConnectionLost(responseObject)
 
 function connect(subscribe_topic, qos)
 {
-    var hostname = 'test.mosquitto.org'; // Could be changed to localhost if 
-    var port = 8080;
     var clientId = generateUUID();
 
+    console.info('Connecting to topic:', subscribe_topic);
     console.info('Connecting to Server: Hostname: ', hostname, '. Port: ', port, '. Client ID: ', clientId);
     client = new Paho.MQTT.Client(hostname, Number(port), clientId);
     // set callback handlers
@@ -90,9 +94,39 @@ function publish(client, message, topic, qos)
     if(message == undefined || !message)
 	return;
 
-    console.info('Publishing Message: Topic: ', topic, '. QoS: ' + qos + '. Message: ', message);
+    //console.info('Publishing Message: Topic: ', topic, '. QoS: ' + qos + '. Message: ', message);
     message = new Paho.MQTT.Message(message);
     message.destinationName = topic;
     message.qos = Number(qos);
     client.send(message);
+}
+
+
+function decodeArrayBuffer(buffer)
+{
+    var mime;
+    var a = new Uint8Array(buffer);
+    var nb = a.length;
+        
+    if (nb < 4)
+        return null;
+        
+    var b0 = a[0];
+    var b1 = a[1];
+    var b2 = a[2];
+    var b3 = a[3];
+    if (b0 == 0x89 && b1 == 0x50 && b2 == 0x4E && b3 == 0x47)
+        mime = 'image/png';
+    else if (b0 == 0xff && b1 == 0xd8)
+        mime = 'image/jpeg';
+    else if (b0 == 0x47 && b1 == 0x49 && b2 == 0x46)
+        mime = 'image/gif';
+    else
+        return null;
+        
+    var binary = "";
+    for (var i = 0; i < nb; i++)
+        binary += String.fromCharCode(a[i]);
+    var base64 = window.btoa(binary);
+    return 'data:' + mime + ';base64,' + base64;
 }

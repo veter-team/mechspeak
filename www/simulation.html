@@ -35,18 +35,6 @@
 
   <script>
 
-    // called when a message arrives
-    function onMessageArrived(message)
-    {
-      console.log('Message Recieved: Topic: ', message.destinationName, 
-                  '. Payload: ', message.payloadString, 
-                  '. QoS: ', message.qos);
-
-      // Deserialize message object and adjust speed alone axis
-      var motion_update = JSON.parse(message.payloadString);
-      setmotion(motion_update.x, motion_update.y, motion_update.z);
-    }
-
     // Start ThreeJS visualisation block
 
     // Check if we have WebGL
@@ -60,14 +48,25 @@
     var planeConstant = 0.05; // this value must be slightly higher than the groundMesh's y position of 0.0
     var groundPlane = new THREE.Plane(normalVector, planeConstant);
     var lightPosition4D = new THREE.Vector4();
-    
+
+    var map2 = new THREE.Texture();    
+
     var sphere_pos_x = -10;
     var sphere_pos_z = 50;
     var sphere_pos_x_prev = sphere_pos_x;
     var sphere_pos_z_prev = sphere_pos_z;
     var dx = 0;
     var dz = 0;
-    
+
+    var texture_image = new Image();
+    texture_image.src = "textures/leather_background.png";
+    texture_image.onload = function()
+    {
+      map2.image = texture_image;
+      map2.needsUpdate = true;
+    };
+
+
     init();
     animate();
 
@@ -104,7 +103,7 @@
       var map = new THREE.TextureLoader().load( 'textures/UV_Grid_Sm.jpg' );
       map.wrapS = map.wrapT = THREE.RepeatWrapping;
       map.anisotropy = 16;
-      var map2 = new THREE.TextureLoader().load( 'textures/grasslight-big-nm.jpg' );
+      //var map2 = new THREE.TextureLoader().load( 'textures/had_world_create_event.jpg' );
       map2.wrapS = map.wrapT = THREE.RepeatWrapping;
       map2.anisotropy = 16;
       var material = new THREE.MeshLambertMaterial( { map: map, side: THREE.DoubleSide } );
@@ -121,7 +120,7 @@
       // Create plane
       object = new THREE.Mesh( new THREE.PlaneGeometry(200, 200, 4, 4), material2);
       object.position.set(0, 0, 0);
-      object.rotation.x = 3.1415 / 2.0;
+      object.rotation.x = -3.1415 / 2.0;
       scene.add(object);
 
       // Create axis helper (three ortogonal linies in the middle)
@@ -175,14 +174,15 @@
       sphere.position.x += dx;
       sphere.position.z += dz;
 
-      if(Math.abs(sphere.position.x - sphere_pos_x_prev) > 10 * dx)
+      if(Math.abs(sphere.position.x - sphere_pos_x_prev) > Math.abs(10 * dx))
       {
         sphere_pos_x_prev = sphere.position.x;
         var msg = JSON.stringify({"x":sphere_pos_x_prev, "z":sphere.position.z});
         publish(sim_client, msg, sensor_topic, qos);
+
       }
 
-      if(Math.abs(sphere.position.z - sphere_pos_z_prev) > 10 * dz)
+      if(Math.abs(sphere.position.z - sphere_pos_z_prev) > Math.abs(10 * dz))
       {
         sphere_pos_z_prev = sphere.position.z;
         var msg = JSON.stringify({"x":sphere.position.x, "z":sphere_pos_z_prev});
@@ -198,11 +198,35 @@
     } 
 
 
+    // called when a message arrives
+    function onMessageArrived(message)
+    {
+      if(message.destinationName.endsWith("camera1"))
+      {
+        setvideo(message.payloadBytes)
+      }
+      else
+      {
+        // Deserialize message object and adjust speed alone axis
+        var motion_update = JSON.parse(message.payloadString);
+        setmotion(motion_update.x, motion_update.y, motion_update.z);
+      }
+    }
+
+
     // Adjust motion parameters. Y (vertical) axis is ignored for now.
     function setmotion(increment_x, increment_y, increment_z)
     {
       dx = increment_x;
       dz = increment_z;
+    }
+
+    function setvideo(payload)
+    {
+        //var blob = new Blob(payload, {type : 'image/jpeg'});
+        //var img_data = window.URL.createObjectURL(blob);
+        //console.info('setvideo called');
+        texture_image.src = decodeArrayBuffer(payload);
     }
 
   </script>

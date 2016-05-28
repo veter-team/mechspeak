@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+
+<html>
+
+<head>
+  <meta charset="UTF-8">
+
+  <title>Simulation</title>
+
+  <!-- Source Paho MQTT Client-->
+  <script src="js/mqttws31-min.js"></script>
+  <!-- Utility Javascript -->
+  <script src="js/utility.js"></script>
+
+  <script>
+  // MQTT client global object
+  var client = null;
+  </script>
+
+</head>
+
+<body onload="client = connect(sensor_topic, qos)">
+
+  <h1>Simple topic observer</h1>
+
+  <span id="connectionstatus">Connection status</span>
+  <p/>
+  Received notification: 
+  <span id="message">...</span>
+
+  <p/>
+
+  <img id="videoimg" width="256px" height="256px" src=""/>
+  
+  <script>
+
+    // called when a message arrives
+    function onMessageArrived(message)
+    {
+        img_data = decodeArrayBuffer(message.payloadBytes);
+        document.getElementById("videoimg").src = img_data;
+    }
+
+  </script>
+
+</div>    
+</body>
+
+</html>
