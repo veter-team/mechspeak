@@ -30,15 +30,30 @@
 
   <p/>
 
-  <img id="videoimg" width="256px" height="256px" src=""/>
+  <canvas id="imageCanvas" width="256px" height="256px"></canvas>
+
+  <!-- img id="videoimg" width="256px" height="256px" src=""/ -->
   
   <script>
 
     // called when a message arrives
     function onMessageArrived(message)
     {
-        img_data = decodeArrayBuffer(message.payloadBytes);
-        document.getElementById("videoimg").src = img_data;
+        var blob = new Blob([message.payloadBytes], {type: 'application/octet-binary'});
+	var url = URL.createObjectURL(blob);
+        //document.getElementById("videoimg").src = url;
+	var image = new Image();
+	image.src = url
+	image.width = 256;
+	image.height = 256;
+	var context = document.getElementById('imageCanvas').getContext('2d');
+	image.onload = function() {
+	  ////context.drawImage(image, 0, 0, image.width, image.height, 0, 0, image.width, image.height);
+	  context.drawImage(image, 0, 0);
+          URL.revokeObjectURL(url);
+	};
+	delete image;
+	delete context;
     }
 
   </script>
