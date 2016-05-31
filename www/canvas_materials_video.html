@@ -226,9 +226,8 @@
 
  
           function onMessageArrived(message) {
-              if(message.destinationName.endsWith("camera1"))
+              if(message.destinationName.substr(-7) == "camera1")
               {
-                  console.info('onMessageArrived')
                   setvideo(message.payloadBytes)
               }
           }
