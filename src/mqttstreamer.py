@@ -19,7 +19,7 @@ print('Connected')
 mqttc.loop_start()
 
 with picamera.PiCamera() as camera:
-    camera.resolution = (320, 200)
+    camera.resolution = (320, 240)
     # Start a preview and let the camera warm up for 2 seconds
     camera.start_preview()
     time.sleep(2)
@@ -37,7 +37,7 @@ with picamera.PiCamera() as camera:
         # Reset the stream for the next capture
         stream.seek(0)
         stream.truncate()
-        time.sleep(1.0 / 5) # FPS
+        time.sleep(1.0 / 10) # FPS
 
 mqttc.loop_stop()
 mqttc.disconnect()
