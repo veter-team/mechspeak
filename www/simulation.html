@@ -223,10 +223,8 @@
 
     function setvideo(payload)
     {
-        //var blob = new Blob(payload, {type : 'image/jpeg'});
-        //var img_data = window.URL.createObjectURL(blob);
-        //console.info('setvideo called');
-        texture_image.src = decodeArrayBuffer(payload);
+        var blob = new Blob([payload], {type: 'application/octet-binary'});
+        texture_image.src = URL.createObjectURL(blob);
     }
 
   </script>
