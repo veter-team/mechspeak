@@ -13,7 +13,7 @@ qos = 0
 frames_dir = '/home/pi/flags'
 
 # Connect to mqtt server
-mqttc = mqtt.Client()
+mqttc = mqtt.Client(protocol=mqtt.MQTTv311)
 mqttc.connect(server_host, port=server_port)
 #mqttc.loop_start()
 
